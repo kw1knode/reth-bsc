@@ -1,16 +1,17 @@
-use jsonrpsee_core::server::RpcModule;
+use jsonrpsee::RpcModule;
 use reth::rpc::api::IntoEngineApiRpcModule;
-use reth_engine_primitives::BeaconConsensusEngineHandle;
+use reth_engine_primitives::ConsensusEngineHandle;
 use std::sync::Arc;
 
 #[cfg(feature = "bench-test")]
-use alloy_rpc_types::engine::{ForkchoiceState, PayloadStatusEnum};
+use alloy_rpc_types_engine::{ForkchoiceState, PayloadStatusEnum};
 #[cfg(feature = "bench-test")]
-use jsonrpsee_types::error::ErrorObjectOwned;
+use jsonrpsee_types::ErrorObjectOwned;
 #[cfg(feature = "bench-test")]
 use reth_payload_primitives::EngineApiMessageVersion;
 #[cfg(feature = "bench-test")]
 use reth_node_ethereum::engine::EthPayloadAttributes;
+
 
 pub mod builder;
 pub mod payload;
@@ -21,14 +22,14 @@ pub struct BscEngineApi {
     /// Handle to the beacon consensus engine
     #[allow(dead_code)]
     engine_handle:
-        Arc<BeaconConsensusEngineHandle<crate::node::engine_api::payload::BscPayloadTypes>>,
+        Arc<ConsensusEngineHandle<crate::node::engine_api::payload::BscPayloadTypes>>,
 }
 
 impl BscEngineApi {
     /// Create a new BSC Engine API instance
     pub fn new(
         engine_handle: Arc<
-            BeaconConsensusEngineHandle<crate::node::engine_api::payload::BscPayloadTypes>,
+            ConsensusEngineHandle<crate::node::engine_api::payload::BscPayloadTypes>,
         >,
     ) -> Self {
         Self { engine_handle }
