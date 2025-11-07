@@ -482,35 +482,39 @@ where ChainSpec: EthChainSpec + BscHardforks + 'static,
         if !(new_header.number).is_multiple_of(epoch_length) {
             return;
         }
-        let Some((mut new_validators, vote_address_map)) = validators else {
+        let Some((mut new_validators, vote_addresses)) = validators else {
             return;
         };
 
-        new_validators.sort();
         let mut extra_data = new_header.extra_data.to_vec();
         if !self.spec.is_luban_active_at_block(new_header.number) {
-            // Pre-Luban: append validator addresses directly to extra data
+            // Pre-Luban: sort and append validator addresses directly to extra data
+            new_validators.sort();
             for validator in &new_validators {
                 extra_data.extend_from_slice(validator.as_slice());
             }
         } else {
             // Luban active: append validator count first, then validators with vote addresses
             extra_data.push(new_validators.len() as u8);
+            
             let mut vote_map = std::collections::HashMap::new();
             if self.spec.is_luban_transition_at_block(new_header.number) {
+                // On Luban transition block, use zero BLS keys for all validators
                 let zero_bls_key = VoteAddress::ZERO;
                 for validator in &new_validators {
                     vote_map.insert(*validator, zero_bls_key);
                 }
             } else {
                 for (i, validator) in new_validators.iter().enumerate() {
-                    if i < vote_address_map.len() {
-                        vote_map.insert(*validator, vote_address_map[i]);
+                    if i < vote_addresses.len() {
+                        vote_map.insert(*validator, vote_addresses[i]);
                     } else {
                         vote_map.insert(*validator, VoteAddress::ZERO);
                     }
                 }
             }
+            
+            new_validators.sort();
             for validator in &new_validators {
                 extra_data.extend_from_slice(validator.as_slice());
                 extra_data.extend_from_slice(vote_map.get(validator).unwrap().as_slice());
