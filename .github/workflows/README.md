@@ -6,28 +6,21 @@ This workflow automatically:
 1. **Syncs with upstream** (bnb-chain/reth-bsc) daily
 2. **Merges updates** into your fork automatically
 3. **Builds Docker images** for both AMD64 and ARM64
-4. **Pushes to Docker Hub** with version tags
+4. **Pushes to GitHub Container Registry** (ghcr.io) with version tags
 
 ### Setup Instructions
 
-1. **Create Docker Hub Access Token:**
-   - Go to https://hub.docker.com/settings/security
-   - Click "New Access Token"
-   - Give it a name (e.g., "github-actions")
-   - Copy the token (you won't see it again!)
-
-2. **Add Secrets to GitHub:**
+1. **Enable Actions Permissions:**
    - Go to your repository: https://github.com/kw1knode/reth-bsc
-   - Click Settings → Secrets and variables → Actions
-   - Click "New repository secret"
-   - Add two secrets:
-     - Name: `DOCKERHUB_USERNAME`, Value: `kw1k`
-     - Name: `DOCKERHUB_TOKEN`, Value: (paste the token from step 1)
-
-3. **Enable Actions:**
-   - Go to Settings → Actions → General
+   - Click Settings → Actions → General
    - Under "Workflow permissions", select "Read and write permissions"
    - Click "Save"
+
+2. **Enable Package Visibility (Optional):**
+   - After the first build, go to your packages: https://github.com/kw1knode?tab=packages
+   - Click on the `reth-bsc` package
+   - Click "Package settings"
+   - Change visibility to "Public" if you want others to pull it
 
 ### How It Works
 
@@ -49,6 +42,18 @@ The workflow triggers on:
 The workflow builds for both:
 - `linux/amd64` (Intel/AMD servers)
 - `linux/arm64` (ARM servers, Apple Silicon)
+
+### Using the Images
+
+Pull the image from GitHub Container Registry:
+
+```bash
+# Latest version
+docker pull ghcr.io/kw1knode/reth-bsc:latest
+
+# Specific version
+docker pull ghcr.io/kw1knode/reth-bsc:v0.0.5-beta
+```
 
 ### Caching
 
