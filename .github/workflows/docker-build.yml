@@ -1,119 +1,44 @@
-name: Build and Push Docker Image
+name: Sync & Build
 
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - 'v*'
-  workflow_dispatch:
   schedule:
-    # Check for upstream updates daily at 2 AM UTC
-    - cron: '0 2 * * *'
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+    - cron: '0 2 * * *'  # Daily at 2 AM UTC
+  workflow_dispatch:
 
 jobs:
-  sync-upstream:
+  sync-and-build:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    outputs:
-      has_changes: ${{ steps.sync.outputs.has_new_commits }}
+      packages: write
     
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Sync with upstream
-        id: sync
+      - name: Sync upstream
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Add upstream if not exists
           git remote add upstream https://github.com/bnb-chain/reth-bsc.git || true
-          
-          # Fetch upstream
           git fetch upstream
-          
-          # Get current commit
-          BEFORE=$(git rev-parse HEAD)
-          
-          # Merge upstream/main into main
-          git merge upstream/main --no-edit || {
-            echo "Merge conflict detected, skipping"
-            echo "has_new_commits=false" >> $GITHUB_OUTPUT
-            exit 0
-          }
-          
-          # Get new commit
-          AFTER=$(git rev-parse HEAD)
-          
-          # Check if there are changes
-          if [ "$BEFORE" != "$AFTER" ]; then
-            echo "New commits found, pushing to fork"
-            git push origin main
-            echo "has_new_commits=true" >> $GITHUB_OUTPUT
-          else
-            echo "No new commits"
-            echo "has_new_commits=false" >> $GITHUB_OUTPUT
-          fi
+          git merge upstream/main --no-edit
+          git push origin main
 
-  build-and-push:
-    needs: sync-upstream
-    if: needs.sync-upstream.outputs.has_changes == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          ref: main
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=v0.0.5-beta,enable={{is_default_branch}}
-
-      - name: Build and push Docker image
+      - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:v0.0.5-beta
